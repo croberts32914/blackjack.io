@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Blackjack</title>
+  <style>
+    body {
+      background-image: url("background3.png");
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    .container {
+      background-color: green;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 600px; /* Set a maximum width for the container */
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .hand {
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin: 10px 0;
+      font-size: 24px;
+    }
+
+    .button-container {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    .card-img {
+      width: 160px; /* Set the width of the cards */
+      height: 240px; /* Set the height of the cards */
+      margin-bottom: 10px; /* Add some spacing between the cards */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="game-title">Blackjack</h1>
+
+    <div id="hand-container" style="display: none;">
+      <div class="hand">
+        <p>Player's Hand:</p>
+        <span id="player-hand"></span>
+      </div>
+      <div class="hand">
+        <p>Dealer's Hand:</p>
+        <span id="dealer-hand"></span>
+      </div>
+    </div>
+
+    <p id="score" style="display: none;">
+      Player's Score: <span id="player-score"></span><br>
+      Dealer's Score: <span id="dealer-score"></span>
+    </p>
+
+    <div class="button-container">
+      <button id="start-btn">Start Game</button>
+      <button id="hit-btn" disabled>Hit</button>
+      <button id="stand-btn" disabled>Stand</button>
+    </div>
+  </div>
+
+  <script>
+    // Define variables
+    let playerHand = [];
+    let dealerHand = [];
+    let playerScore = 0;
+    let dealerScore = 0;
+    let deck = [];
+
+    // Initialize buttons and elements
+    const startBtn = document.getElementById('start-btn');
+    const hitBtn = document.getElementById('hit-btn');
+    const standBtn = document.getElementById('stand-btn');
+    const gameTitle = document.getElementById('game-title');
+    const handContainer = document.getElementById('hand-container');
+    const playerHandEl = document.getElementById('player-hand');
+    const dealerHandEl = document.getElementById('dealer-hand');
+    const scoreEl = document.getElementById('score');
+    const playerScoreEl = document.getElementById('player-score');
+    const dealerScoreEl = document.getElementById('dealer-score');
+
+    // Function to start the game
+    function startGame() {
+      // Clear previous data
+      playerHand = [];
+      dealerHand = [];
+      playerScore = 0;
+      dealerScore = 0;
+
+      // Shuffle and deal initial cards
+      deck = shuffleDeck();
+      dealCard(playerHand);
+      dealCard(dealerHand, false);
+      dealCard(playerHand);
+      dealCard(dealerHand);
+
+      // Calculate and update the score
+      playerScore = calculateHandScore(playerHand);
+      dealerScore = calculateHandScore(dealerHand);
+
+      // Display initial hands and score
+      updateHands();
+
+      // Enable/disable buttons
+      startBtn.disabled = true;
+      hitBtn.disabled = false;
+      standBtn.disabled = false;
+
+      // Hide the game title and display the hands and score
+      gameTitle.style.display = 'none';
+      handContainer.style.display = 'block';
+      scoreEl.style.display = 'block';
+    }
+
+    // Function to shuffle the deck
+    function shuffleDeck() {
+      const deck = [
+        { rank: 2, image: '2.png' }, { rank: 3, image: '3.png' },
+        { rank: 4, image: '4.png' }, { rank: 5, image: '5.png' },
+        { rank: 6, image: '6.png' }, { rank: 7, image: '7.png' },
+        { rank: 8, image: '8.png' }, { rank: 9, image: '9.png' },
+        { rank: 10, image: '10.png' }, { rank: 10, image: 'jack.png' },
+        { rank: 10, image: 'queen.png' }, { rank: 10, image: 'king.png' },
+        { rank: 11, image: 'ace.png' }
+      ];
+
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+
+      return deck;
+    }
+
+    // Function to deal a card to a hand
+    function dealCard(hand, showCard = true) {
+      const card = deck.pop();
+      hand.push(card);
+      if (showCard) {
+        updateHands();
+      }
+    }
+
+    // Function to update the displayed hands and score
+    function updateHands() {
+      playerHandEl.innerHTML = playerHand.map(cardToHTML).join('');
+      dealerHandEl.innerHTML = dealerHand.map(cardToHTML).join('');
+      playerScoreEl.textContent = playerScore;
+      dealerScoreEl.textContent = dealerScore;
+    }
+
+    // Function to convert a card object to HTML representation
+    function cardToHTML(card) {
+      const imageSrc = `cards/${card.image}`;
+      const altText = card.rank === 11 ? 'Ace' : String(card.rank);
+      return `<img class="card-img" src="${imageSrc}" alt="${altText}" style="margin-right: 10px;">`;
+    }
+
+
+    // Function to calculate the score of a hand
+    function calculateHandScore(hand) {
+      let score = 0;
+      let numAces = 0; // Track the number of Aces in the hand
+
+      for (let card of hand) {
+        if (card.rank === 11) {
+          numAces++;
+        }
+        score += card.rank;
+      }
+
+      // Adjust score for each Ace in the hand
+      while (score > 21 && numAces > 0) {
+        score -= 10; // Convert Ace from 11 to 1
+        numAces--;
+      }
+
+      return score;
+    }
+
+    // Function to handle the "Hit" button click
+    function hit() {
+      dealCard(playerHand);
+
+      // Calculate and update the score
+      playerScore = calculateHandScore(playerHand);
+
+      // Check if the player went bust
+      if (playerScore > 21) {
+        endGame('You went bust! Dealer wins.');
+      } else if (playerScore === 21) {
+        stand(); // Auto-stand if player gets 21
+      } else {
+        updateHands();
+      }
+    }
+
+    // Function to handle the "Stand" button click
+    function stand() {
+      // Reveal the dealer's facedown card
+      dealerHandEl.innerHTML = dealerHand.map(cardToHTML).join('');
+
+      // Calculate and update the score
+      dealerScore = calculateHandScore(dealerHand);
+
+      // Dealer's turn to play
+      while (dealerScore < 17) {
+        dealCard(dealerHand);
+        dealerScore = calculateHandScore(dealerHand);
+      }
+
+      // Check if the dealer went bust or if player wins
+      if (dealerScore > 21) {
+        endGame('Dealer went bust! You win!');
+      } else if (dealerScore > playerScore) {
+        endGame('Dealer wins.');
+      } else if (dealerScore < playerScore) {
+        endGame('You win!');
+      } else {
+        endGame('It\'s a tie!');
+      }
+    }
+
+ // Function to end the game
+ function endGame(message) {
+  updateHands();
+  startBtn.disabled = false;
+  hitBtn.disabled = true;
+  standBtn.disabled = true;
+  gameTitle.style.display = 'block';
+  handContainer.style.display = 'none';
+  scoreEl.style.display = 'none';
+
+  // Display player's and dealer's scores in the pop-up message
+  alert(message + "\nPlayer's Score: " + playerScore + "\nDealer's Score: " + dealerScore);
+}
+
+
+    // Add event listeners to buttons
+    startBtn.addEventListener('click', startGame);
+    hitBtn.addEventListener('click', hit);
+    standBtn.addEventListener('click', stand);
+  </script>
+</body>
+</html>
