@@ -4,13 +4,14 @@
   <title>Blackjack</title>
   <style>
     body {
-      background-image: url("background3.png");
+      background-color: darkGreen;
+      
       background-size: cover;
       background-repeat: no-repeat;
     }
 
     .container {
-      background-color: green;
+      background-color: darkGreen;
       margin: 20px auto;
       padding: 20px;
       border-radius: 10px;
@@ -46,7 +47,8 @@
       width: 160px; /* Set the width of the cards */
       height: 240px; /* Set the height of the cards */
       margin-bottom: 10px; /* Add some spacing between the cards */
-    }
+        margin-right: 10px; /* Add right margin between the cards */
+      }
   </style>
 </head>
 <body>
@@ -56,11 +58,11 @@
     <div id="hand-container" style="display: none;">
       <div class="hand">
         <p>Player's Hand:</p>
-        <span id="player-hand"></span>
+        <div id="player-hand"></div>
       </div>
       <div class="hand">
         <p>Dealer's Hand:</p>
-        <span id="dealer-hand"></span>
+        <div id="dealer-hand"></div>
       </div>
     </div>
 
@@ -73,16 +75,20 @@
       <button id="start-btn">Start Game</button>
       <button id="hit-btn" disabled>Hit</button>
       <button id="stand-btn" disabled>Stand</button>
+      <button id="reset-bank-btn">Reset Bank</button>
     </div>
+    <p id="bank">Bank: $<span id="bank-display">200</span></p>
   </div>
 
   <script>
-    // Define variables
+    // Define variables and constants
     let playerHand = [];
     let dealerHand = [];
     let playerScore = 0;
     let dealerScore = 0;
     let deck = [];
+    let bank = 200;
+    let betAmount = 20;
 
     // Initialize buttons and elements
     const startBtn = document.getElementById('start-btn');
@@ -95,14 +101,35 @@
     const scoreEl = document.getElementById('score');
     const playerScoreEl = document.getElementById('player-score');
     const dealerScoreEl = document.getElementById('dealer-score');
+    const bankDisplay = document.getElementById('bank-display');
+    const resetBankBtn = document.getElementById('reset-bank-btn');
+
+    // Function to handle the reset bank button click
+    function handleResetBank() {
+      bank = 200;
+      bankDisplay.textContent = bank;
+    }
+
+    // Add event listener to reset bank button
+    resetBankBtn.addEventListener('click', handleResetBank);
 
     // Function to start the game
     function startGame() {
+      if (bank < betAmount) {
+        alert('Insufficient funds in the bank.');
+        return;
+      }
       // Clear previous data
       playerHand = [];
       dealerHand = [];
       playerScore = 0;
       dealerScore = 0;
+
+      // Subtract bet amount from the bank
+      bank -= betAmount;
+
+      // Update bank display
+      bankDisplay.textContent = bank;
 
       // Shuffle and deal initial cards
       deck = shuffleDeck();
@@ -129,131 +156,156 @@
       scoreEl.style.display = 'block';
     }
 
-    // Function to shuffle the deck
-    function shuffleDeck() {
-      const deck = [
-        { rank: 2, image: '2.png' }, { rank: 3, image: '3.png' },
-        { rank: 4, image: '4.png' }, { rank: 5, image: '5.png' },
-        { rank: 6, image: '6.png' }, { rank: 7, image: '7.png' },
-        { rank: 8, image: '8.png' }, { rank: 9, image: '9.png' },
-        { rank: 10, image: '10.png' }, { rank: 10, image: 'jack.png' },
-        { rank: 10, image: 'queen.png' }, { rank: 10, image: 'king.png' },
-        { rank: 11, image: 'ace.png' }
-      ];
+// Shuffle the deck of cards
+function shuffleDeck() {
+  const cards = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'ace', 'king', 'queen', 'jack'];
+  const deck = [];
 
-      for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
-      }
+  for (let card of cards) {
+    deck.push({ value: card, image: card + '.png' });
+  }
 
-      return deck;
+  // Fisher-Yates shuffle algorithm
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  return deck;
+}
+
+    // Deal a card to a hand
+function dealCard(hand, showCard = true) {
+  const card = deck.pop();
+  hand.push(card);
+
+  if (showCard) {
+    const cardImgEl = document.createElement('img');
+    cardImgEl.src = 'images/' + card.image;
+    cardImgEl.classList.add('card-img');
+    playerHandEl.appendChild(cardImgEl);
+
+    const rank = card.value.slice(0, -1); // Extract the rank from the card value
+    card.rank = rank; // Add the rank property to the card object
+  } else {
+    const hiddenCardImgEl = document.createElement('img');
+    hiddenCardImgEl.src = 'images/card-back.png';
+    hiddenCardImgEl.classList.add('card-img');
+    dealerHandEl.appendChild(hiddenCardImgEl);
+  }
+}
+
+    // Calculate the score of a hand
+function calculateHandScore(hand) {
+  let score = 0;
+  let hasAce = false;
+
+  for (let card of hand) {
+    const value = card.value;
+
+    if (value === 'ace') {
+      score += 11;
+      hasAce = true;
+    } else if (['king', 'queen', 'jack'].includes(value)) {
+      score += 10;
+    } else {
+      score += parseInt(value);
     }
+  }
 
-    // Function to deal a card to a hand
-    function dealCard(hand, showCard = true) {
-      const card = deck.pop();
-      hand.push(card);
-      if (showCard) {
-        updateHands();
-      }
-    }
+  if (hasAce && score > 21) {
+    score -= 10;
+  }
 
-    // Function to update the displayed hands and score
+  return score;
+}
+
+
+    // Update the displayed hands and scores
     function updateHands() {
-      playerHandEl.innerHTML = playerHand.map(cardToHTML).join('');
-      dealerHandEl.innerHTML = dealerHand.map(cardToHTML).join('');
+      playerHandEl.innerHTML = '';
+      dealerHandEl.innerHTML = '';
+
+      for (let card of playerHand) {
+        const cardEl = document.createElement('img');
+        cardEl.classList.add('card-img');
+        cardEl.src = card.image;
+        playerHandEl.appendChild(cardEl);
+      }
+
+      for (let card of dealerHand) {
+        const cardEl = document.createElement('img');
+        cardEl.classList.add('card-img');
+        cardEl.src = card.image;
+        dealerHandEl.appendChild(cardEl);
+      }
+
       playerScoreEl.textContent = playerScore;
       dealerScoreEl.textContent = dealerScore;
-    }
-
-    // Function to convert a card object to HTML representation
-    function cardToHTML(card) {
-      const imageSrc = `cards/${card.image}`;
-      const altText = card.rank === 11 ? 'Ace' : String(card.rank);
-      return `<img class="card-img" src="${imageSrc}" alt="${altText}" style="margin-right: 10px;">`;
-    }
-
-
-    // Function to calculate the score of a hand
-    function calculateHandScore(hand) {
-      let score = 0;
-      let numAces = 0; // Track the number of Aces in the hand
-
-      for (let card of hand) {
-        if (card.rank === 11) {
-          numAces++;
-        }
-        score += card.rank;
-      }
-
-      // Adjust score for each Ace in the hand
-      while (score > 21 && numAces > 0) {
-        score -= 10; // Convert Ace from 11 to 1
-        numAces--;
-      }
-
-      return score;
     }
 
     // Function to handle the "Hit" button click
     function hit() {
       dealCard(playerHand);
-
-      // Calculate and update the score
       playerScore = calculateHandScore(playerHand);
+      updateHands();
 
-      // Check if the player went bust
       if (playerScore > 21) {
-        endGame('You went bust! Dealer wins.');
-      } else if (playerScore === 21) {
-        stand(); // Auto-stand if player gets 21
-      } else {
-        updateHands();
+        endGame();
       }
     }
 
     // Function to handle the "Stand" button click
     function stand() {
-      // Reveal the dealer's facedown card
-      dealerHandEl.innerHTML = dealerHand.map(cardToHTML).join('');
-
-      // Calculate and update the score
-      dealerScore = calculateHandScore(dealerHand);
-
-      // Dealer's turn to play
       while (dealerScore < 17) {
         dealCard(dealerHand);
         dealerScore = calculateHandScore(dealerHand);
+        updateHands();
       }
 
-      // Check if the dealer went bust or if player wins
-      if (dealerScore > 21) {
-        endGame('Dealer went bust! You win!');
-      } else if (dealerScore > playerScore) {
-        endGame('Dealer wins.');
-      } else if (dealerScore < playerScore) {
-        endGame('You win!');
-      } else {
-        endGame('It\'s a tie!');
-      }
+      endGame();
     }
 
- // Function to end the game
- function endGame(message) {
-  updateHands();
-  startBtn.disabled = false;
-  hitBtn.disabled = true;
-  standBtn.disabled = true;
-  gameTitle.style.display = 'block';
-  handContainer.style.display = 'none';
-  scoreEl.style.display = 'none';
+    // Function to end the game and determine the winner
+    function endGame() {
+      hitBtn.disabled = true;
+      standBtn.disabled = true;
 
-  // Display player's and dealer's scores in the pop-up message
-  alert(message + "\nPlayer's Score: " + playerScore + "\nDealer's Score: " + dealerScore);
-}
+      let message = '';
 
+      if (playerScore > 21) {
+        message = 'You bust! Dealer wins.';
+      } else if (dealerScore > 21) {
+        message = 'Dealer busts! You win.';
+        bank += betAmount * 3;
+      } else if (playerScore === dealerScore) {
+        message = 'Push! It\'s a tie.';
+        bank += betAmount; // Updated: Return the bet amount in case of a tie
+      } else if (playerScore > dealerScore) {
+        message = 'You win.';
+        bank += betAmount * 3; // Updated: Double the bet amount as winnings
+      } else {
+        message = 'Dealer wins.';
+      }
 
-    // Add event listeners to buttons
+      // Display the message with player's and dealer's scores in the popup
+      alert(message + "\nPlayer's Score: " + playerScore + "\nDealer's Score: " + dealerScore);
+
+      // Update the bank display
+      bankDisplay.textContent = bank;
+
+      // Reset game state
+      startBtn.disabled = false;
+      gameTitle.style.display = 'block';
+      handContainer.style.display = 'none';
+      scoreEl.style.display = 'none';
+      playerHandEl.innerHTML = '';
+      dealerHandEl.innerHTML = '';
+      playerScoreEl.textContent = '';
+      dealerScoreEl.textContent = '';
+    }
+
+    // Event listeners for buttons
     startBtn.addEventListener('click', startGame);
     hitBtn.addEventListener('click', hit);
     standBtn.addEventListener('click', stand);
